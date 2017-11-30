@@ -1,4 +1,12 @@
 <resources>
-    <string name="app_name">trevoga</string>
-    <string name="action_settings">Settings</string>
+    <string name="app_name">Driver Pro</string>
+    <string name="to_word">To:</string>
+    <string name="contact">Emergency contact:</string>
+    <string name="number">Emergency number:</string>
+    <string name="message">Message...</string>
+    <string name="run_button">RUN</string>
+    <string name="stop_button">STOP</string>
+    <string name="action_info">info</string>
+
+
 </resources>
