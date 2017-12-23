@@ -79,8 +79,7 @@
             android:backgroundTint="@color/button_background"
             android:text="@string/run_button"
             android:textColor="@android:color/white"
-            android:textSize="24sp"
-            />
+            android:textSize="24sp"/>
 
         <Button
             android:id="@+id/stopButton"
@@ -94,9 +93,6 @@
             android:backgroundTint="@color/button_background"
             android:text="@string/stop_button"
             android:textColor="@android:color/white"
-            android:textSize="24sp"
-            />
+            android:textSize="24sp"/>
     </LinearLayout>
-
-
 </LinearLayout>

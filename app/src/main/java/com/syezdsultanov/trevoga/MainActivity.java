@@ -25,39 +25,32 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int OVERLAY_PERMISSION_REQ_CODE = 777;
-    private static final int PICK_NUMBER_REQUEST = 888;
-    private static final int REQUEST_READ_CONTACTS = 999;
-    private static final int REQUEST_LOCATION = 111;
-    private static final int REQUEST_SEND_SMS = 222;
+    private static final int OVERLAY_PERMISSION_REQ_CODE = 111;
+    private static final int PICK_NUMBER_REQUEST = 222;
+    private static final int REQUEST_READ_CONTACTS = 333;
+    private static final int REQUEST_LOCATION = 444;
+    private static final int REQUEST_SEND_SMS = 555;
     private EditText mSmsEditText, mContactEditText;
     private StringBuilder numbers = new StringBuilder("");
     private int count;
     private String contactName, contactNumber;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
-
         mContactEditText = findViewById(R.id.contact);
         if (!TextUtils.isEmpty(pref.getString("name", ""))) {
             mContactEditText.setText(pref.getString("name", ""));
         }
-
         mSmsEditText = findViewById(R.id.messageText);
         if (!TextUtils.isEmpty(pref.getString("text", ""))) {
             mSmsEditText.setText(pref.getString("text", ""));
         }
-
-
         if (!TextUtils.isEmpty(pref.getString("number", ""))) {
             numbers = new StringBuilder(pref.getString("number", ""));
         }
-
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -72,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
         Button stopButton = findViewById(R.id.stopButton);
         stopButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -82,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-
         final ImageView contactsPhoto = findViewById(R.id.humans_photo);
         contactsPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,7 +84,6 @@ public class MainActivity extends AppCompatActivity {
                 if (count == 3) {
                     mSmsEditText.requestFocus();
                 }
-
             }
         });
         checkPermission();
@@ -136,7 +126,6 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_CONTACTS},
                     REQUEST_READ_CONTACTS);
         }
-
     }
 
     @Override
@@ -161,9 +150,7 @@ public class MainActivity extends AppCompatActivity {
                         && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "SMS won't send to Emergency cotact", Toast.LENGTH_SHORT).show();
                 }
-                return;
             }
-
         }
     }
 
@@ -173,7 +160,6 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getPackageName()));
                 startActivityForResult(intent, OVERLAY_PERMISSION_REQ_CODE);
-
             }
         }
     }
@@ -182,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
         startActivityForResult(intent, PICK_NUMBER_REQUEST);
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -193,7 +178,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-
         if (requestCode == PICK_NUMBER_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri contactData = data.getData();
             Cursor contact = getContentResolver().query(contactData, null, null, null, null);
@@ -206,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
                 if (cursor.moveToFirst()) {
                     String contactId =
                             cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-
                     //  Get all phone numbers.
                     Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
                             ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + contactId, null, null);
@@ -231,7 +214,6 @@ public class MainActivity extends AppCompatActivity {
             contactName = "";
         }
     }
-
 
     private void saveValues() {
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
