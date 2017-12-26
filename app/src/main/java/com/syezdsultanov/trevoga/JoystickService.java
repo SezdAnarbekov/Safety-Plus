@@ -16,7 +16,6 @@ import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.SmsManager;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -27,11 +26,14 @@ import android.widget.Toast;
 import java.util.List;
 
 public class JoystickService extends Service {
+
+
+    private LocationManager mLocationManager;
     private WindowManager mWindowManager;
     private ImageView mJoystickImageView;
     private long lastPressTime, pressTime;
     private String sms, phoneNumber;
-    private LocationManager mLocationManager;
+    private volatile boolean flag = true;
 
     private static boolean isAvailable(Context ctx, Intent intent) {
         final PackageManager mgr = ctx.getPackageManager();
@@ -50,6 +52,10 @@ public class JoystickService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, final int startId) {
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mJoystickImageView = new ImageView(this);
         mJoystickImageView.setImageResource(R.drawable.logo_sos_start);
@@ -72,7 +78,6 @@ public class JoystickService extends Service {
         mWindowManager.addView(mJoystickImageView, params);
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
         phoneNumber = pref.getString("number", "");
-        Log.d("TAG", "" + phoneNumber);
         sms = pref.getString("text", "");
         if (sms.equals("")) {
             sms = "Driver Pro\n";
@@ -83,6 +88,7 @@ public class JoystickService extends Service {
             private int initialY;
             private float initialTouchX;
             private float initialTouchY;
+            private Thread t;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -91,6 +97,9 @@ public class JoystickService extends Service {
                         pressTime = System.currentTimeMillis();
                         if (pressTime - lastPressTime <= 300) {
                             JoystickService.this.stopSelf();
+                            if (t != null) {
+                                flag = false;
+                            }
                         }
                         lastPressTime = pressTime;
                         initialX = paramsF.x;
@@ -99,7 +108,7 @@ public class JoystickService extends Service {
                         initialTouchY = event.getRawY();
                         break;
                     case MotionEvent.ACTION_UP:
-                        if ((System.currentTimeMillis() - pressTime) > 1400) {
+                        if ((System.currentTimeMillis() - pressTime) > 1000) {
                             if (isAvailable(getApplicationContext(),
                                     new Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION))) {
                                 Intent intent = new Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION);
@@ -111,8 +120,14 @@ public class JoystickService extends Service {
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                                 startActivity(intent);
                             }
-                            sendMessage();
                             mJoystickImageView.setImageResource(R.drawable.logo_sos);
+                            t = new TheThread(startId);
+                            t.start();
+//                            try {
+//                                t.join();
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
                         }
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -125,11 +140,7 @@ public class JoystickService extends Service {
                 return false;
             }
         });
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
+        return START_STICKY;
     }
 
     private void sendMessage() {
@@ -155,9 +166,7 @@ public class JoystickService extends Service {
         }
         try {
             String numbers[] = phoneNumber.split(",");
-            Log.d("TAG", "" + numbers.length);
             for (String number : numbers) {
-                Log.d("TAG", "" + number);
                 SmsManager.getDefault().sendTextMessage(number.trim(), null,
                         smsBody.toString(), null, null);
             }
@@ -172,6 +181,28 @@ public class JoystickService extends Service {
         if (mJoystickImageView != null) {
             mWindowManager.removeView(mJoystickImageView);
             mJoystickImageView = null;
+        }
+    }
+
+    final class TheThread extends Thread {
+        private int serviceId;
+
+        TheThread(int serviceId) {
+            this.serviceId = serviceId;
+        }
+
+        @Override
+        public void run() {
+            sendMessage();
+            while (flag) {
+                try {
+                    Thread.sleep(10000);
+                    sendMessage();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            stopSelf(this.serviceId);
         }
     }
 }

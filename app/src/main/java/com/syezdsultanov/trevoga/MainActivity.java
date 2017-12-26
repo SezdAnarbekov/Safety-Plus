@@ -12,11 +12,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -30,20 +29,21 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_READ_CONTACTS = 333;
     private static final int REQUEST_LOCATION = 444;
     private static final int REQUEST_SEND_SMS = 555;
-    private EditText mSmsEditText, mContactEditText;
+    private EditText mSmsEditText, mContactsEditText;
     private StringBuilder numbers = new StringBuilder("");
-    private int count;
     private String contactName, contactNumber;
+    private int count;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
-        mContactEditText = findViewById(R.id.contact);
+        mContactsEditText = findViewById(R.id.contactsName);
         if (!TextUtils.isEmpty(pref.getString("name", ""))) {
-            mContactEditText.setText(pref.getString("name", ""));
+            mContactsEditText.setText(pref.getString("name", ""));
         }
+        mContactsEditText.setKeyListener(null);
         mSmsEditText = findViewById(R.id.messageText);
         if (!TextUtils.isEmpty(pref.getString("text", ""))) {
             mSmsEditText.setText(pref.getString("text", ""));
@@ -55,9 +55,9 @@ public class MainActivity extends AppCompatActivity {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getLocationPermission();
+                getSmsPermission();
                 Intent starIntent = new Intent(MainActivity.this, JoystickService.class);
-                if (mContactEditText.getText().toString().length() < 3) {
+                if (mContactsEditText.getText().toString().length() < 3) {
                     Toast.makeText(MainActivity.this, "Please enter a valid number.", Toast.LENGTH_SHORT).show();
                 } else {
                     saveValues();
@@ -74,36 +74,29 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-        final ImageView contactsPhoto = findViewById(R.id.humans_photo);
+        final ImageView contactsPhoto = findViewById(R.id.contacts_photo);
         contactsPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getReadContactPermission();
-                pickContact();
                 count++;
                 if (count == 3) {
                     mSmsEditText.requestFocus();
+                    count = 0;
                 }
+                getReadContactPermission();
+                pickContact();
+            }
+        });
+
+        final ImageView deletePhoto = findViewById(R.id.delete_photo);
+        deletePhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                deleteContact();
             }
         });
         checkPermission();
-        getSmsPermission();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_list, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_info) {
-            Toast.makeText(this, "INFORMATION", Toast.LENGTH_LONG).show();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        getLocationPermission();
     }
 
     private void getLocationPermission() {
@@ -129,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_READ_CONTACTS: {
                 if (grantResults.length < 0
@@ -167,14 +160,14 @@ public class MainActivity extends AppCompatActivity {
     private void pickContact() {
         Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
         startActivityForResult(intent, PICK_NUMBER_REQUEST);
+
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == OVERLAY_PERMISSION_REQ_CODE) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (!Settings.canDrawOverlays(this)) {
-                    Toast.makeText(this, "Please restart the application", Toast.LENGTH_LONG).show();
+                if (resultCode == RESULT_CANCELED) {
                 }
             }
         }
@@ -201,12 +194,12 @@ public class MainActivity extends AppCompatActivity {
                 cursor.close();
             }
             contact.close();
-            if (mContactEditText.length() > 0) {
-                mContactEditText.append("," + contactName);
-                numbers.append("," + contactNumber);
+            if (mContactsEditText.length() > 0) {
+                mContactsEditText.append("," + contactName);
+                numbers.append(",").append(contactNumber);
             } else {
-                mContactEditText.setText(contactName);
-                numbers = new StringBuilder("");
+                mContactsEditText.setText(contactName);
+                // numbers = new StringBuilder("");
                 numbers.append(contactNumber);
             }
         }
@@ -215,19 +208,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void deleteContact() {
+        if (mContactsEditText.length() > 0 && mContactsEditText.getText().toString().contains(",")) {
+            String temp = mContactsEditText.getText().toString();
+            temp = temp.substring(0, temp.lastIndexOf(','));
+            mContactsEditText.setText(temp);
+            numbers = new StringBuilder(numbers.substring(0, numbers.lastIndexOf(",")));
+        } else {
+            mContactsEditText.setText("");
+            numbers = new StringBuilder("");
+        }
+
+    }
+
     private void saveValues() {
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor edit = pref.edit();
         edit.putString("number", numbers.toString());
-        edit.putString("name", mContactEditText.getText().toString());
+        edit.putString("name", mContactsEditText.getText().toString());
         edit.putString("text", mSmsEditText.getText().toString());
         edit.apply();
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        saveValues();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        Intent stopIntent = new Intent(MainActivity.this, JoystickService.class);
-        stopService(stopIntent);
     }
 }
