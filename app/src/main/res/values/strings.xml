@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Kid\'s Safety</string>
+    <string name="app_name">Safety Plus</string>
     <string name="to_word">To:</string>
-    <string name="contact">Emergency contact:</string>
+    <string name="contact">Emergency contacts:</string>
     <string name="number">Emergency number:</string>
     <string name="message">Message...</string>
     <string name="run_button">RUN</string>
