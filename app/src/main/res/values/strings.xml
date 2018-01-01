@@ -2,9 +2,17 @@
     <string name="app_name">Safety Plus</string>
     <string name="to_word">To:</string>
     <string name="contact">Emergency contacts:</string>
-    <string name="number">Emergency number:</string>
     <string name="message">Message...</string>
     <string name="run_button">RUN</string>
     <string name="stop_button">STOP</string>
-    <string name="action_info">info</string>
+    <string name="start">Start</string>
+    <string name="first_text">Safety Plus is a personal safety application for everybody. Especially
+        for kids and drivers. It sends text messages with location every ten seconds while recording
+    audio.</string>
+    <string name="second_text">After choosing emergency contacts and providing some alert messages,
+        press to run button to activate service.It creates small emoji at top left corner.
+        Tap to stop button to deactivate the service.</string>
+    <string name="third_text">In emergency situation press the emoji for two seconds. The
+        emergency contacts will get text with updated location every ten seconds.Once you are safe,
+        simply double tap the emoji. Open the Downloads to find the audio records.</string>
 </resources>

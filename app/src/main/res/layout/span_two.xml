@@ -10,7 +10,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-
         android:src="@drawable/second_page"/>
 
     <TextView
@@ -18,5 +17,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="send"/>
+        android:layout_marginEnd="20dp"
+        android:layout_marginStart="20dp"
+        android:text="@string/second_text"
+        android:textSize="12sp"
+        android:textStyle="bold"/>
 </LinearLayout>
