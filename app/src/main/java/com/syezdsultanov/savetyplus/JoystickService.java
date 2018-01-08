@@ -9,10 +9,12 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -23,6 +25,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -44,6 +47,8 @@ public class JoystickService extends Service {
     private LinearLayout mLinearLayout;
     private ImageView mJoystickImageView;
     private Chronometer mChronometer;
+    private CountDownTimer mCountDownTimer;
+    private Button mCancelButton;
     private long lastPressTime, pressTime;
     private String sms, phoneNumber, outputFile;
     private volatile boolean flag = true;
@@ -62,10 +67,21 @@ public class JoystickService extends Service {
         mJoystickImageView = new ImageView(this);
         mJoystickImageView.setImageResource(R.drawable.sos_image_start);
         mChronometer = new Chronometer(this);
-        mChronometer.setBase(SystemClock.elapsedRealtime());
         mChronometer.setTextSize(15.0f);
         mChronometer.setTextColor(Color.RED);
         mChronometer.setVisibility(View.GONE);
+        mCancelButton = new Button(this);
+        mCancelButton.setTextSize(12);
+        mCancelButton.setTextColor(Color.RED);
+        mCancelButton.setTypeface(mCancelButton.getTypeface(), Typeface.BOLD);
+        mCancelButton.setVisibility(View.GONE);
+        mCancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mCancelButton.setVisibility(View.GONE);
+                mCountDownTimer.cancel();
+            }
+        });
         int LAYOUT_FLAG;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LAYOUT_FLAG = LayoutParams.TYPE_APPLICATION_OVERLAY;
@@ -86,8 +102,10 @@ public class JoystickService extends Service {
         mLinearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
         mChronometer.setLayoutParams(layoutParamsview);
         mJoystickImageView.setLayoutParams(layoutParamsview);
+        mCancelButton.setLayoutParams(layoutParamsview);
         mLinearLayout.addView(mJoystickImageView);
         mLinearLayout.addView(mChronometer);
+        mLinearLayout.addView(mCancelButton);
         params.x = 0;
         params.y = 100;
         mWindowManager.addView(mLinearLayout, params);
@@ -102,7 +120,6 @@ public class JoystickService extends Service {
             sms = "Safety Plus\n";
         }
 
-
         mJoystickImageView.setOnTouchListener(new View.OnTouchListener() {
             private final LayoutParams paramsF = params;
             private int initialX;
@@ -112,13 +129,12 @@ public class JoystickService extends Service {
             private Thread t;
             private boolean isCronometerStarted;
 
-
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-
                         pressTime = System.currentTimeMillis();
+
                         if (pressTime - lastPressTime <= 300) {
                             if (myRecorder != null) {
                                 myRecorder.stop();
@@ -144,16 +160,28 @@ public class JoystickService extends Service {
                         initialTouchY = event.getRawY();
                         break;
                     case MotionEvent.ACTION_UP:
-
                         if ((System.currentTimeMillis() - pressTime) > 1000) {
-                            mJoystickImageView.setImageResource(R.drawable.sos_image);
-                            mChronometer.setVisibility(View.VISIBLE);
-                            mChronometer.start();
-                            isCronometerStarted = true;
-                            if (t == null) {
-                                t = new TheThread(startId);
-                                t.start();
-                            }
+                            mCountDownTimer = new CountDownTimer(6000, 1000) {
+                                public void onTick(long millisUntilFinished) {
+                                    mCancelButton.setVisibility(View.VISIBLE);
+                                    mCancelButton.setText("CANCEL:" + millisUntilFinished / 1000);
+                                }
+
+                                public void onFinish() {
+                                    mCancelButton.setVisibility(View.GONE);
+                                    mChronometer.setVisibility(View.VISIBLE);
+                                    mJoystickImageView.setImageResource(R.drawable.sos_image);
+                                    mChronometer.setVisibility(View.VISIBLE);
+                                    mChronometer.setBase(SystemClock.elapsedRealtime());
+                                    mChronometer.start();
+                                    isCronometerStarted = true;
+                                    if (t == null) {
+                                        t = new TheThread(startId);
+                                        t.start();
+                                    }
+                                }
+                            }.start();
+
                         }
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -185,6 +213,7 @@ public class JoystickService extends Service {
         if (smsCount > 1) {
             smsBody = new StringBuilder("Safety Plus\t");
         }
+
         try {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED && ActivityCompat.
@@ -230,11 +259,11 @@ public class JoystickService extends Service {
         }
     }
 
+
     @Override
     public void onDestroy() {
         super.onDestroy();
         if (mJoystickImageView != null) {
-            //      mWindowManager.removeView(mJoystickImageView);
             mWindowManager.removeView(mLinearLayout);
             mJoystickImageView = null;
         }
