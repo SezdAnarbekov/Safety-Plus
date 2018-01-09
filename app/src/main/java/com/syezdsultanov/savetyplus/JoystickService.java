@@ -10,6 +10,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
@@ -35,13 +38,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 import static android.view.WindowManager.LayoutParams;
 
 public class JoystickService extends Service {
 
     private MediaRecorder myRecorder;
-    private LocationManager mLocationManager;
     private WindowManager mWindowManager;
     private LayoutParams params;
     private LinearLayout mLinearLayout;
@@ -52,7 +56,6 @@ public class JoystickService extends Service {
     private long lastPressTime, pressTime;
     private String sms, phoneNumber, outputFile;
     private volatile boolean flag = true;
-    private int smsCount;
 
     @Nullable
     @Override
@@ -71,8 +74,12 @@ public class JoystickService extends Service {
         mChronometer.setTextColor(Color.RED);
         mChronometer.setVisibility(View.GONE);
         mCancelButton = new Button(this);
-        mCancelButton.setTextSize(12);
-        mCancelButton.setTextColor(Color.RED);
+        mCancelButton.setTextSize(16f);
+        mCancelButton.setTextColor(Color.WHITE);
+        mCancelButton.setBackgroundResource(R.drawable.button_background);
+        mCancelButton.setGravity(Gravity.CENTER);
+        GradientDrawable drawable = (GradientDrawable) mCancelButton.getBackground();
+        drawable.setColor(getResources().getColor(R.color.cancel_button_background));
         mCancelButton.setTypeface(mCancelButton.getTypeface(), Typeface.BOLD);
         mCancelButton.setVisibility(View.GONE);
         mCancelButton.setOnClickListener(new View.OnClickListener() {
@@ -103,6 +110,7 @@ public class JoystickService extends Service {
         mChronometer.setLayoutParams(layoutParamsview);
         mJoystickImageView.setLayoutParams(layoutParamsview);
         mCancelButton.setLayoutParams(layoutParamsview);
+        mCancelButton.setMinimumHeight(20);
         mLinearLayout.addView(mJoystickImageView);
         mLinearLayout.addView(mChronometer);
         mLinearLayout.addView(mCancelButton);
@@ -134,7 +142,6 @@ public class JoystickService extends Service {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         pressTime = System.currentTimeMillis();
-
                         if (pressTime - lastPressTime <= 300) {
                             if (myRecorder != null) {
                                 myRecorder.stop();
@@ -143,13 +150,15 @@ public class JoystickService extends Service {
                                 myRecorder = null;
                                 saveToDownloads();
                             }
+                            if (mCountDownTimer != null) {
+                                mCountDownTimer.cancel();
+                            }
                             if (isCronometerStarted) {
                                 mChronometer.stop();
                                 mChronometer = null;
                             }
                             JoystickService.this.stopSelf();
                             if (t != null) {
-                                smsCount = 0;
                                 flag = false;
                             }
                         }
@@ -168,9 +177,8 @@ public class JoystickService extends Service {
                                 }
 
                                 public void onFinish() {
-                                    mCancelButton.setVisibility(View.GONE);
-                                    mChronometer.setVisibility(View.VISIBLE);
                                     mJoystickImageView.setImageResource(R.drawable.sos_image);
+                                    mCancelButton.setVisibility(View.GONE);
                                     mChronometer.setVisibility(View.VISIBLE);
                                     mChronometer.setBase(SystemClock.elapsedRealtime());
                                     mChronometer.start();
@@ -208,26 +216,33 @@ public class JoystickService extends Service {
     }
 
     private void sendMessageWithLocation() {
-        smsCount++;
         StringBuilder smsBody = new StringBuilder(sms);
-        if (smsCount > 1) {
-            smsBody = new StringBuilder("Safety Plus\t");
-        }
-
         try {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED && ActivityCompat.
                     checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) {
-                mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                Location location = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
-                smsBody.append("\nI'm here:\t");
-                smsBody.append("http://maps.google.com?q=");
-                smsBody.append(latitude);
-                smsBody.append(",");
-                smsBody.append(longitude);
+                Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                try {
+                    List<Address> addressList = geocoder.getFromLocation(
+                            latitude, longitude, 1);
+                    if (addressList != null && addressList.size() > 0) {
+                        Address address = addressList.get(0);
+                        for (int i = 0; i <= address.getMaxAddressLineIndex(); i++) {
+                            smsBody.append("\n").append("Location: ").append(address.getAddressLine(i));
+                        }
+                    }
+                } catch (IOException e) {
+                    smsBody.append("\nI'm here:\t");
+                    smsBody.append("http://maps.google.com?q=");
+                    smsBody.append(latitude);
+                    smsBody.append(",");
+                    smsBody.append(longitude);
+                }
                 sendMessage(smsBody);
             } else {
                 sendMessage(smsBody);
@@ -242,14 +257,16 @@ public class JoystickService extends Service {
     private void sendMessage(StringBuilder smsBody) {
         try {
             String numbers[] = phoneNumber.split(",");
+            String text = smsBody.toString();
             for (String number : numbers) {
-                SmsManager sms = SmsManager.getDefault();
+                SmsManager smsManager = SmsManager.getDefault();
                 if (smsBody.length() < 160) {
-                    sms.sendTextMessage(number.trim(), null,
-                            smsBody.toString(), null, null);
+                    smsManager.sendTextMessage(number.trim(), null,
+                            text, null, null);
+
                 } else {
-                    ArrayList<String> parts = sms.divideMessage(smsBody.toString());
-                    sms.sendMultipartTextMessage(number.trim(), null, parts,
+                    ArrayList<String> parts = smsManager.divideMessage(text);
+                    smsManager.sendMultipartTextMessage(number.trim(), null, parts,
                             null, null);
                 }
             }
