@@ -17,7 +17,6 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -58,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(pref.getString("number", ""))) {
             numbers = new StringBuilder(pref.getString("number", ""));
         }
-        Button startButton = findViewById(R.id.startButton);
+        Button startButton = findViewById(R.id.runButton);
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -224,7 +223,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == OVERLAY_PERMISSION_REQ_CODE) {
             if (!Settings.canDrawOverlays(this)) {
-                Log.d("TAG", "DENIYED");
                 finish();
             }
         }

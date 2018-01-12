@@ -170,6 +170,8 @@ public class JoystickService extends Service {
                         break;
                     case MotionEvent.ACTION_UP:
                         if ((System.currentTimeMillis() - pressTime) > 1000) {
+                            if (t != null)
+                                break;
                             mCountDownTimer = new CountDownTimer(6000, 1000) {
                                 public void onTick(long millisUntilFinished) {
                                     mCancelButton.setVisibility(View.VISIBLE);
@@ -189,7 +191,6 @@ public class JoystickService extends Service {
                                     }
                                 }
                             }.start();
-
                         }
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -198,7 +199,6 @@ public class JoystickService extends Service {
                         mWindowManager.updateViewLayout(mLinearLayout, paramsF);
                         break;
                 }
-
                 return true;
             }
         });
@@ -276,7 +276,6 @@ public class JoystickService extends Service {
         }
     }
 
-
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -289,12 +288,10 @@ public class JoystickService extends Service {
             myRecorder.release();
             myRecorder = null;
         }
-
     }
 
     final class TheThread extends Thread {
         private final int serviceId;
-
         TheThread(int serviceId) {
             this.serviceId = serviceId;
         }
