@@ -323,7 +323,7 @@ public class JoystickService extends Service {
 
         private void startRecording() {
             File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (directory == null) {
+            if (!directory.exists()) {
                 directory.mkdirs();
             }
             Date date = new Date();
