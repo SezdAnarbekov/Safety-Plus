@@ -125,7 +125,7 @@ public class JoystickService extends Service {
         phoneNumber = pref.getString("number", "");
         sms = pref.getString("text", "");
         if (sms.equals("")) {
-            sms = "Safety Plus\n";
+            sms = "I need a help.\n";
         }
 
         mJoystickImageView.setOnTouchListener(new View.OnTouchListener() {
@@ -322,9 +322,14 @@ public class JoystickService extends Service {
         }
 
         private void startRecording() {
+            File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (directory == null) {
+                directory.mkdirs();
+            }
             Date date = new Date();
             outputFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                     .getAbsolutePath() + "/" + date.toString() + "sp_audiorecords.3gp";
+
             myRecorder = new MediaRecorder();
             myRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             myRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);

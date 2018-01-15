@@ -6,6 +6,7 @@
     <string name="run_button">RUN</string>
     <string name="stop_button">STOP</string>
     <string name="start">Start</string>
+    <string name="info">Information</string>
     <string name="first_text">Safety Plus is a personal safety application for everybody. Especially
         for kids and drivers. It sends text messages with location every ten seconds while recording
     audio.</string>
