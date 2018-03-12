@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="button_background">#0d0775</color>
+    <color name="cancel_button_background">#2D61E5</color>
 </resources>

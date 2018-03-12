@@ -9,10 +9,15 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -23,6 +28,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -32,22 +38,24 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 import static android.view.WindowManager.LayoutParams;
 
 public class JoystickService extends Service {
 
     private MediaRecorder myRecorder;
-    private LocationManager mLocationManager;
     private WindowManager mWindowManager;
     private LayoutParams params;
     private LinearLayout mLinearLayout;
     private ImageView mJoystickImageView;
     private Chronometer mChronometer;
+    private CountDownTimer mCountDownTimer;
+    private Button mCancelButton;
     private long lastPressTime, pressTime;
     private String sms, phoneNumber, outputFile;
     private volatile boolean flag = true;
-    private int smsCount;
 
     @Nullable
     @Override
@@ -62,10 +70,25 @@ public class JoystickService extends Service {
         mJoystickImageView = new ImageView(this);
         mJoystickImageView.setImageResource(R.drawable.sos_image_start);
         mChronometer = new Chronometer(this);
-        mChronometer.setBase(SystemClock.elapsedRealtime());
         mChronometer.setTextSize(15.0f);
         mChronometer.setTextColor(Color.RED);
         mChronometer.setVisibility(View.GONE);
+        mCancelButton = new Button(this);
+        mCancelButton.setTextSize(16f);
+        mCancelButton.setTextColor(Color.WHITE);
+        mCancelButton.setBackgroundResource(R.drawable.button_background);
+        mCancelButton.setGravity(Gravity.CENTER);
+        GradientDrawable drawable = (GradientDrawable) mCancelButton.getBackground();
+        drawable.setColor(getResources().getColor(R.color.cancel_button_background));
+        mCancelButton.setTypeface(mCancelButton.getTypeface(), Typeface.BOLD);
+        mCancelButton.setVisibility(View.GONE);
+        mCancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mCancelButton.setVisibility(View.GONE);
+                mCountDownTimer.cancel();
+            }
+        });
         int LAYOUT_FLAG;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LAYOUT_FLAG = LayoutParams.TYPE_APPLICATION_OVERLAY;
@@ -86,8 +109,11 @@ public class JoystickService extends Service {
         mLinearLayout.setGravity(Gravity.CENTER_HORIZONTAL);
         mChronometer.setLayoutParams(layoutParamsview);
         mJoystickImageView.setLayoutParams(layoutParamsview);
+        mCancelButton.setLayoutParams(layoutParamsview);
+        mCancelButton.setMinimumHeight(20);
         mLinearLayout.addView(mJoystickImageView);
         mLinearLayout.addView(mChronometer);
+        mLinearLayout.addView(mCancelButton);
         params.x = 0;
         params.y = 100;
         mWindowManager.addView(mLinearLayout, params);
@@ -99,9 +125,8 @@ public class JoystickService extends Service {
         phoneNumber = pref.getString("number", "");
         sms = pref.getString("text", "");
         if (sms.equals("")) {
-            sms = "Safety Plus\n";
+            sms = "I need a help.\n";
         }
-
 
         mJoystickImageView.setOnTouchListener(new View.OnTouchListener() {
             private final LayoutParams paramsF = params;
@@ -112,12 +137,10 @@ public class JoystickService extends Service {
             private Thread t;
             private boolean isCronometerStarted;
 
-
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-
                         pressTime = System.currentTimeMillis();
                         if (pressTime - lastPressTime <= 300) {
                             if (myRecorder != null) {
@@ -127,13 +150,15 @@ public class JoystickService extends Service {
                                 myRecorder = null;
                                 saveToDownloads();
                             }
+                            if (mCountDownTimer != null) {
+                                mCountDownTimer.cancel();
+                            }
                             if (isCronometerStarted) {
                                 mChronometer.stop();
                                 mChronometer = null;
                             }
                             JoystickService.this.stopSelf();
                             if (t != null) {
-                                smsCount = 0;
                                 flag = false;
                             }
                         }
@@ -144,16 +169,28 @@ public class JoystickService extends Service {
                         initialTouchY = event.getRawY();
                         break;
                     case MotionEvent.ACTION_UP:
-
                         if ((System.currentTimeMillis() - pressTime) > 1000) {
-                            mJoystickImageView.setImageResource(R.drawable.sos_image);
-                            mChronometer.setVisibility(View.VISIBLE);
-                            mChronometer.start();
-                            isCronometerStarted = true;
-                            if (t == null) {
-                                t = new TheThread(startId);
-                                t.start();
-                            }
+                            if (t != null)
+                                break;
+                            mCountDownTimer = new CountDownTimer(6000, 1000) {
+                                public void onTick(long millisUntilFinished) {
+                                    mCancelButton.setVisibility(View.VISIBLE);
+                                    mCancelButton.setText("CANCEL:" + millisUntilFinished / 1000);
+                                }
+
+                                public void onFinish() {
+                                    mJoystickImageView.setImageResource(R.drawable.sos_image);
+                                    mCancelButton.setVisibility(View.GONE);
+                                    mChronometer.setVisibility(View.VISIBLE);
+                                    mChronometer.setBase(SystemClock.elapsedRealtime());
+                                    mChronometer.start();
+                                    isCronometerStarted = true;
+                                    if (t == null) {
+                                        t = new TheThread(startId);
+                                        t.start();
+                                    }
+                                }
+                            }.start();
                         }
                         break;
                     case MotionEvent.ACTION_MOVE:
@@ -162,7 +199,6 @@ public class JoystickService extends Service {
                         mWindowManager.updateViewLayout(mLinearLayout, paramsF);
                         break;
                 }
-
                 return true;
             }
         });
@@ -180,26 +216,33 @@ public class JoystickService extends Service {
     }
 
     private void sendMessageWithLocation() {
-        smsCount++;
         StringBuilder smsBody = new StringBuilder(sms);
-        if (smsCount > 1) {
-            smsBody = new StringBuilder("Safety Plus\t");
-        }
-
         try {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED && ActivityCompat.
                     checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) {
-                mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                Location location = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
-                smsBody.append("\nI'm here:\t");
-                smsBody.append("http://maps.google.com?q=");
-                smsBody.append(latitude);
-                smsBody.append(",");
-                smsBody.append(longitude);
+                Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                try {
+                    List<Address> addressList = geocoder.getFromLocation(
+                            latitude, longitude, 1);
+                    if (addressList != null && addressList.size() > 0) {
+                        Address address = addressList.get(0);
+                        for (int i = 0; i <= address.getMaxAddressLineIndex(); i++) {
+                            smsBody.append("\n").append("Location: ").append(address.getAddressLine(i));
+                        }
+                    }
+                } catch (IOException e) {
+                    smsBody.append("\nI'm here:\t");
+                    smsBody.append("http://maps.google.com?q=");
+                    smsBody.append(latitude);
+                    smsBody.append(",");
+                    smsBody.append(longitude);
+                }
                 sendMessage(smsBody);
             } else {
                 sendMessage(smsBody);
@@ -214,14 +257,16 @@ public class JoystickService extends Service {
     private void sendMessage(StringBuilder smsBody) {
         try {
             String numbers[] = phoneNumber.split(",");
+            String text = smsBody.toString();
             for (String number : numbers) {
-                SmsManager sms = SmsManager.getDefault();
+                SmsManager smsManager = SmsManager.getDefault();
                 if (smsBody.length() < 160) {
-                    sms.sendTextMessage(number.trim(), null,
-                            smsBody.toString(), null, null);
+                    smsManager.sendTextMessage(number.trim(), null,
+                            text, null, null);
+
                 } else {
-                    ArrayList<String> parts = sms.divideMessage(smsBody.toString());
-                    sms.sendMultipartTextMessage(number.trim(), null, parts,
+                    ArrayList<String> parts = smsManager.divideMessage(text);
+                    smsManager.sendMultipartTextMessage(number.trim(), null, parts,
                             null, null);
                 }
             }
@@ -235,7 +280,6 @@ public class JoystickService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (mJoystickImageView != null) {
-            //      mWindowManager.removeView(mJoystickImageView);
             mWindowManager.removeView(mLinearLayout);
             mJoystickImageView = null;
         }
@@ -244,12 +288,10 @@ public class JoystickService extends Service {
             myRecorder.release();
             myRecorder = null;
         }
-
     }
 
     final class TheThread extends Thread {
         private final int serviceId;
-
         TheThread(int serviceId) {
             this.serviceId = serviceId;
         }
@@ -280,9 +322,14 @@ public class JoystickService extends Service {
         }
 
         private void startRecording() {
+            File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
             Date date = new Date();
             outputFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                     .getAbsolutePath() + "/" + date.toString() + "sp_audiorecords.3gp";
+
             myRecorder = new MediaRecorder();
             myRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             myRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);

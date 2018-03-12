@@ -25,7 +25,7 @@ public class PageThree extends Fragment {
         fa = super.getActivity();
         View three = inflater.inflate(R.layout.span_three, container, false);
 
-        Button validerInscription = three.findViewById(R.id.startButton);
+        Button validerInscription = three.findViewById(R.id.runButton);
         validerInscription.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

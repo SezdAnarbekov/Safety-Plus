@@ -76,16 +76,16 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:orientation="vertical">
 
         <Button
-            android:id="@+id/startButton"
+            android:id="@+id/runButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
             android:layout_marginStart="16dp"
-            android:background="@drawable/button_background"
+            android:background="@drawable/button_background2"
             android:backgroundTint="@color/button_background"
             android:text="@string/run_button"
             android:textColor="@android:color/white"
@@ -99,7 +99,7 @@
             android:layout_marginEnd="16dp"
             android:layout_marginStart="16dp"
             android:layout_marginTop="8dp"
-            android:background="@drawable/button_background"
+            android:background="@drawable/button_background2"
             android:backgroundTint="@color/button_background"
             android:text="@string/stop_button"
             android:textColor="@android:color/white"
