@@ -27,6 +27,10 @@ import android.widget.Toast;
 import com.syezdsultanov.savetyplus.JoystickService;
 import com.syezdsultanov.savetyplus.R;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int OVERLAY_PERMISSION_REQ_CODE = 111;
@@ -36,7 +40,18 @@ public class MainActivity extends AppCompatActivity {
     private static final int SEND_SMS_PERMISSION_REQ_CODE = 555;
     private static final int RECORD_AUDIO_PERMISSION_REQ_CODE = 777;
     private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_REQ_CODE = 888;
-    private EditText mSmsEditText, mContactsEditText;
+    @BindView(R.id.contactsName)
+    EditText mContactsName;
+    @BindView(R.id.contacts_photo)
+    ImageView mContactsPhoto;
+    @BindView(R.id.delete_photo)
+    ImageView mDeletePhoto;
+    @BindView(R.id.messageText)
+    EditText mMessageText;
+    @BindView(R.id.startButton)
+    Button mStartButton;
+    @BindView(R.id.stopButton)
+    Button mStopButton;
     private StringBuilder numbers = new StringBuilder("");
     private String contactName, contactNumber;
     private int count;
@@ -45,23 +60,40 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
-        mContactsEditText = findViewById(R.id.contactsName);
         if (!TextUtils.isEmpty(pref.getString("name", ""))) {
-            mContactsEditText.setText(pref.getString("name", ""));
+            mContactsName.setText(pref.getString("name", ""));
         }
-        mContactsEditText.setKeyListener(null);
-        mSmsEditText = findViewById(R.id.messageText);
+        mContactsName.setKeyListener(null);
         if (!TextUtils.isEmpty(pref.getString("text", ""))) {
-            mSmsEditText.setText(pref.getString("text", ""));
+            mMessageText.setText(pref.getString("text", ""));
         }
         if (!TextUtils.isEmpty(pref.getString("number", ""))) {
             numbers = new StringBuilder(pref.getString("number", ""));
         }
-        Button startButton = findViewById(R.id.startButton);
-        startButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        getOverlayPermission();
+        getLocationPermission();
+        getSmsPermission();
+        getWriteExternalStorage();
+    }
+
+    @OnClick({R.id.contacts_photo, R.id.delete_photo, R.id.startButton, R.id.stopButton})
+    public void onViewClicked(View view) {
+        switch (view.getId()) {
+            case R.id.contacts_photo:
+                count++;
+                if (count == 3) {
+                    mMessageText.requestFocus();
+                    count = 0;
+                }
+                getReadContactPermission();
+                getContactNumber();
+                break;
+            case R.id.delete_photo:
+                deleteContact();
+                break;
+            case R.id.startButton:
                 getRecordAudioPermission();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (!Settings.canDrawOverlays(MainActivity.this)) {
@@ -71,48 +103,19 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 Intent starIntent = new Intent(MainActivity.this, JoystickService.class);
-                if (mContactsEditText.getText().toString().length() < 3) {
+                if (mContactsName.getText().toString().length() < 3) {
                     Toast.makeText(MainActivity.this, "Please enter a valid number.",
                             Toast.LENGTH_SHORT).show();
                 } else {
                     saveValues();
                     startService(starIntent);
                 }
-            }
-        });
-        Button stopButton = findViewById(R.id.stopButton);
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+                break;
+            case R.id.stopButton:
                 Intent stopIntent = new Intent(MainActivity.this, JoystickService.class);
                 stopService(stopIntent);
-            }
-        });
-        final ImageView contactsPhoto = findViewById(R.id.contacts_photo);
-        contactsPhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                count++;
-                if (count == 3) {
-                    mSmsEditText.requestFocus();
-                    count = 0;
-                }
-                getReadContactPermission();
-                getContactNumber();
-            }
-        });
-
-        final ImageView deletePhoto = findViewById(R.id.delete_photo);
-        deletePhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                deleteContact();
-            }
-        });
-        getOverlayPermission();
-        getLocationPermission();
-        getSmsPermission();
-        getWriteExternalStorage();
+                break;
+        }
     }
 
     private void getWriteExternalStorage() {
@@ -235,35 +238,35 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Cursor contact = getContentResolver().query(contactData, null, null,
                         null, null);
-            if (contact.moveToFirst()) {
-                contactName = contact.getString(contact.getColumnIndex(ContactsContract
-                        .Contacts.DISPLAY_NAME));
-                ContentResolver cr = getContentResolver();
-                Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
-                        "DISPLAY_NAME = '" + contactName + "'", null, null);
-                if (cursor.moveToFirst()) {
-                    String contactId =
-                            cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-                    Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = "
-                                    + contactId, null, null);
-                    while (phones.moveToNext()) {
-                        contactNumber = phones.getString(phones.getColumnIndex
-                                (ContactsContract.CommonDataKinds.Phone.NUMBER));
+                if (contact.moveToFirst()) {
+                    contactName = contact.getString(contact.getColumnIndex(ContactsContract
+                            .Contacts.DISPLAY_NAME));
+                    ContentResolver cr = getContentResolver();
+                    Cursor cursor = cr.query(ContactsContract.Contacts.CONTENT_URI, null,
+                            "DISPLAY_NAME = '" + contactName + "'", null, null);
+                    if (cursor.moveToFirst()) {
+                        String contactId =
+                                cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+                        Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = "
+                                        + contactId, null, null);
+                        while (phones.moveToNext()) {
+                            contactNumber = phones.getString(phones.getColumnIndex
+                                    (ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        }
+                        phones.close();
                     }
-                    phones.close();
+                    cursor.close();
                 }
-                cursor.close();
-            }
                 contact.close();
             } catch (NullPointerException e) {
                 return;
             }
-            if (mContactsEditText.length() > 0) {
-                mContactsEditText.append("," + contactName);
+            if (mContactsName.length() > 0) {
+                mContactsName.append("," + contactName);
                 numbers.append(",").append(contactNumber);
             } else {
-                mContactsEditText.setText(contactName);
+                mContactsName.setText(contactName);
                 // numbers = new StringBuilder("");
                 numbers.append(contactNumber);
             }
@@ -274,13 +277,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteContact() {
-        if (mContactsEditText.length() > 0 && mContactsEditText.getText().toString().contains(",")) {
-            String temp = mContactsEditText.getText().toString();
+        if (mContactsName.length() > 0 && mContactsName.getText().toString().contains(",")) {
+            String temp = mContactsName.getText().toString();
             temp = temp.substring(0, temp.lastIndexOf(','));
-            mContactsEditText.setText(temp);
+            mContactsName.setText(temp);
             numbers = new StringBuilder(numbers.substring(0, numbers.lastIndexOf(",")));
         } else {
-            mContactsEditText.setText("");
+            mContactsName.setText("");
             numbers = new StringBuilder("");
         }
     }
@@ -289,8 +292,8 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences pref = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor edit = pref.edit();
         edit.putString("number", numbers.toString());
-        edit.putString("name", mContactsEditText.getText().toString());
-        edit.putString("text", mSmsEditText.getText().toString());
+        edit.putString("name", mContactsName.getText().toString());
+        edit.putString("text", mMessageText.getText().toString());
         edit.apply();
     }
 
@@ -304,4 +307,5 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
     }
+
 }

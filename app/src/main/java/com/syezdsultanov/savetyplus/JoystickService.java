@@ -185,6 +185,7 @@ public class JoystickService extends Service {
         if (smsCount > 1) {
             smsBody = new StringBuilder("Safety Plus\t");
         }
+
         try {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED && ActivityCompat.
